@@ -4,7 +4,7 @@ import {
   Wand2, Lightbulb, FileText, Database, Shield, Layers, Route, DollarSign,
   Clock, Rocket, Download, Printer, Copy, Save, BookOpen, Menu,
   Plus, Trash2, Send, Loader2, Gauge, Code2, User, Briefcase, GraduationCap,
-  Settings2, ListChecks, PanelRight, Compass, CircleHelp, Hammer
+  Settings2, ListChecks, PanelRight, Compass, CircleHelp, Hammer, RotateCcw
 } from "lucide-react";
 
 /* ============================================================
@@ -236,6 +236,10 @@ textarea.in{ resize:vertical; min-height:96px; line-height:1.6; }
 .msg.a{ align-self:flex-start; background:var(--paper2); border:1px solid var(--line); border-end-start-radius:5px; }
 .msg .ins{ display:inline-flex; align-items:center; gap:6px; margin-top:9px; font-size:12px; font-weight:700; color:#fff;
   background:var(--brand); border-radius:99px; padding:6px 12px; }
+.msg .mactions{ display:flex; gap:6px; margin-top:9px; }
+.msg .iconbtn{ display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600;
+  color:var(--muted); background:var(--paper); border:1px solid var(--line); border-radius:99px; padding:5px 10px; transition:.15s; }
+.msg .iconbtn:hover{ border-color:var(--ai); color:var(--ink); }
 .qstart{ margin:auto 0; text-align:center; color:var(--muted); }
 .qstart .q{ display:block; width:100%; text-align:start; margin-top:8px; padding:12px 14px; border-radius:13px;
   background:var(--paper2); border:1px solid var(--line); font-size:13.5px; font-weight:600; color:var(--ink); transition:.15s; }
@@ -295,9 +299,10 @@ textarea.in{ resize:vertical; min-height:96px; line-height:1.6; }
 @media(min-width:520px){ .gw{ flex-direction:row; gap:24px; } }
 .gauge{ position:relative; width:150px; height:150px; flex:none; }
 .gauge .l{ position:absolute; inset:0; display:grid; place-items:center; text-align:center; }
-.gauge .l b{ font-family:var(--fEn); font-size:36px; }
-.gauge .l span{ display:block; margin-top:2px; font-family:var(--fMono); font-size:10px; color:var(--muted); letter-spacing:.1em; white-space:nowrap; text-transform:uppercase; }
-.pb[dir="rtl"] .gauge .l span{ font-family:var(--fAr); font-size:11px; letter-spacing:0; text-transform:none; }
+.gauge .l b{ font-family:var(--fEn); font-size:36px; line-height:1; display:inline-flex; align-items:baseline; gap:2px; }
+.gauge .l b .pct{ font-family:var(--fEn); }
+.gauge .l .lbl{ display:block; margin-top:6px; font-family:var(--fMono); font-size:10px; color:var(--muted); letter-spacing:.1em; white-space:nowrap; text-transform:uppercase; }
+.pb[dir="rtl"] .gauge .l .lbl{ font-family:var(--fAr); font-size:11px; letter-spacing:0; text-transform:none; }
 .bars{ flex:1; width:100%; min-width:0; }
 .bar{ margin-bottom:12px; } .bar .t{ display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px; }
 .bar .tr{ height:9px; border-radius:99px; background:var(--paper2); border:1px solid var(--line); overflow:hidden; }
@@ -306,7 +311,14 @@ textarea.in{ resize:vertical; min-height:96px; line-height:1.6; }
 .note{ display:flex; gap:10px; align-items:flex-start; font-size:13.5px; line-height:1.5; padding:11px 13px; border-radius:13px; background:var(--paper2); border:1px solid var(--line); }
 .note .d{ width:8px; height:8px; border-radius:99px; margin-top:6px; flex:none; }
 
-@media print{ .noprint{ display:none !important; } .pb{ background:#fff; color:#000; } .rep{ border:none; box-shadow:none; } }
+/* ---------- footer ---------- */
+.foot{ max-width:760px; margin:26px auto 0; padding:16px 14px calc(16px + env(safe-area-inset-bottom));
+  text-align:center; color:var(--faint); font-size:12px; line-height:1.8; border-top:1px solid var(--line); }
+.foot b{ color:var(--muted); font-weight:700; }
+.foot .hrt{ display:inline-flex; vertical-align:-2px; color:var(--ai); }
+@media(max-width:639px){ .foot{ padding-bottom:calc(86px + env(safe-area-inset-bottom)); } }
+
+@media print{ .foot{ display:none; } .noprint{ display:none !important; } .pb{ background:#fff; color:#000; } .rep{ border:none; box-shadow:none; } }
 `;
 
 /* ---------------- data ---------------- */
@@ -463,6 +475,13 @@ export default function App(){
   const getF=(s,k)=>plan?.[s]?.[k];
   const setF=(s,k,v)=>setPlan(p=>({...p,[s]:{...(p[s]||{}),[k]:v}}));
 
+  // Keep <html> in sync so the scrollbar side, native form controls and
+  // screen readers match the chosen language, not just the inner <div>.
+  useEffect(()=>{
+    document.documentElement.lang=lang;
+    document.documentElement.dir=dir;
+  },[lang,dir]);
+
   function startType(id){
     setType(id);
     setPlan({stack:{stack:suggestStack(id)},database:{tables:suggestTables(id)},timeline:{phases:DEFAULT_PHASES.map(p=>({...p}))},cost:{size:"medium"}});
@@ -474,19 +493,41 @@ export default function App(){
       :level==="business"?"The user is a non-technical business owner. Focus on outcomes, clarity and value."
       :level==="developer"?"The user is a developer. Be precise and technical."
       :"The user has intermediate knowledge.";
-    return `You are the built-in AI assistant of "مِعمار (Architect)", a studio that helps people plan websites, apps and digital systems before building them.
+    const stage=screen==="builder"
+      ? `They are on step ${step+1} of ${total}, currently filling in the "${sec.en}" section (${sec.de}).`
+      : screen==="report"
+      ? `They are viewing the final report. Overall readiness score: ${scores.overall}%.`
+      : "They have not chosen a project type yet.";
+    return `You are the built-in AI assistant of "مِعمار (Architect)", a studio that helps people turn an idea into a clear, structured plan — features, screens, tech stack, database, user flow, security, MVP, timeline and budget — before building it.
 ${lt}
-Always answer in ${lang==="ar"?"Arabic":"English"}. Keep answers short, warm and practical. No markdown headers; short paragraphs or simple dashes only.
-Project type: ${typeObj?typeObj.en:"not chosen yet"}.`;
+${stage}
+${planCtx()}
+Always answer in ${lang==="ar"?"Arabic":"English"}, even if the user writes in another language. Keep replies short (a few sentences, or up to 5 short lines), warm and practical.
+No markdown headers or bold text. For lists, write one short item per line starting with "-", no numbering.
+Be specific to this project type and build on what's already filled in — avoid generic advice.`;
   }
   function planCtx(){const b=plan.basics||{};return `Project: ${b.name||"(unnamed)"} | Type: ${typeObj?.en||"?"} | Goal: ${b.goal||"?"} | Audience: ${b.audience||"?"} | Desc: ${b.desc||"?"}.`;}
+
+  const aiErrMsg=()=>t("I couldn't reach the AI service right now. Please try again in a moment.","تعذّر الوصول لخدمة الذكاء الاصطناعي الآن. حاول مرة أخرى بعد لحظات.");
 
   async function runAI(userMsg,target=null,displayUser=null){
     setAiOpen(true);
     setAiMsgs(m=>[...m,{role:"u",content:displayUser||userMsg}]);
     setAiBusy(true);
     try{ const r=await callClaude(sysPrompt(),userMsg,aiMsgs); setAiMsgs(m=>[...m,{role:"a",content:r,target}]); }
-    catch(e){ setAiMsgs(m=>[...m,{role:"a",content:t("I couldn't reach the AI service right now. The real AI works inside the Claude app — please try again in a moment.","تعذّر الوصول لخدمة الذكاء الاصطناعي الآن. المساعد الحقيقي يعمل داخل تطبيق Claude — جرّب بعد لحظات.")}]); }
+    catch(e){ setAiMsgs(m=>[...m,{role:"a",content:aiErrMsg()}]); }
+    setAiBusy(false);
+  }
+  function copyMsg(content){ navigator.clipboard?.writeText(content); }
+  async function regenerate(){
+    const idx=aiMsgs.map(m=>m.role).lastIndexOf("u");
+    if(idx===-1||aiBusy) return;
+    const userMsg=aiMsgs[idx].content;
+    const history=aiMsgs.slice(0,idx);
+    setAiMsgs(aiMsgs.slice(0,idx+1));
+    setAiBusy(true);
+    try{ const r=await callClaude(sysPrompt(),userMsg,history); setAiMsgs(m=>[...m,{role:"a",content:r}]); }
+    catch(e){ setAiMsgs(m=>[...m,{role:"a",content:aiErrMsg()}]); }
     setAiBusy(false);
   }
   function fieldAction(kind,sec,field){
@@ -525,11 +566,23 @@ Project type: ${typeObj?typeObj.en:"not chosen yet"}.`;
 
   const sec=SECTIONS[step];
   const total=SECTIONS.length;
-  const quick=[
-    {label:t("What can you do?","ماذا تستطيع أن تفعل؟"),msg:"Briefly explain how you can help me plan my project."},
-    {label:t("Suggest features for me","اقترح لي ميزات"),msg:`${planCtx()} Suggest the most important features for this kind of project, one per line.`},
-    {label:t("Explain the tech stack","اشرح لي التقنيات"),msg:"Explain in very simple terms what a tech stack is and its main parts."},
-  ];
+  const quick=screen==="builder"
+    ? [
+        {label:t("Help with this section","ساعدني في هذا القسم"),msg:`${planCtx()} Give me 3-4 concrete, specific suggestions for the "${sec.en}" section I'm currently filling in.`},
+        {label:t("Suggest features for me","اقترح لي ميزات"),msg:`${planCtx()} Suggest the most important features for this kind of project, one per line.`},
+        {label:t("Explain the tech stack","اشرح لي التقنيات"),msg:"Explain in very simple terms what a tech stack is and its main parts."},
+      ]
+    : screen==="report"
+    ? [
+        {label:t("How can I raise my score?","كيف أرفع نسبة الجاهزية؟"),msg:`${planCtx()} My overall readiness score is ${scores.overall}%. What are the top 2-3 things I should improve first?`},
+        {label:t("Biggest risk in my plan","أكبر خطر في خطتي"),msg:`${planCtx()} What's the single biggest risk or gap in this plan right now?`},
+        {label:t("Explain the tech stack","اشرح لي التقنيات"),msg:"Explain in very simple terms what a tech stack is and its main parts."},
+      ]
+    : [
+        {label:t("What can you do?","ماذا تستطيع أن تفعل؟"),msg:"Briefly explain how you can help me plan my project."},
+        {label:t("Suggest features for me","اقترح لي ميزات"),msg:`${planCtx()} Suggest the most important features for this kind of project, one per line.`},
+        {label:t("Explain the tech stack","اشرح لي التقنيات"),msg:"Explain in very simple terms what a tech stack is and its main parts."},
+      ];
 
   return (
     <div className="pb" dir={dir} data-theme={theme}>
@@ -604,11 +657,14 @@ Project type: ${typeObj?typeObj.en:"not chosen yet"}.`;
         )}
       </main>
 
+      <Footer t={t}/>
+
       {screen==="builder" && !aiOpen && <button className="fab noprint only-d" onClick={()=>setAiOpen(true)}><Sparkles size={17}/>{t("AI Assistant","مساعد AI")}</button>}
       {screen==="report" && !aiOpen && <button className="fab noprint" onClick={()=>setAiOpen(true)}><Sparkles size={17}/>{t("AI Assistant","مساعد AI")}</button>}
 
       {aiOpen && <AIPanel t={t} msgs={aiMsgs} busy={aiBusy} input={aiInput} setInput={setAiInput} quick={quick}
-        onClose={()=>setAiOpen(false)} onSend={txt=>{if(txt.trim()){runAI(txt);setAiInput("");}}} onInsert={insertAI}/>}
+        onClose={()=>setAiOpen(false)} onSend={txt=>{if(txt.trim()){runAI(txt);setAiInput("");}}} onInsert={insertAI}
+        onCopy={copyMsg} onRegenerate={regenerate}/>}
 
       {showGloss && <GlossaryModal t={t} lang={lang} onClose={()=>setShowGloss(false)}/>}
       {showJump && (
@@ -627,6 +683,16 @@ Project type: ${typeObj?typeObj.en:"not chosen yet"}.`;
         </div>
       )}
     </div>
+  );
+}
+
+/* ---------------- Footer ---------------- */
+function Footer({t}){
+  return (
+    <footer className="foot noprint">
+      <Hammer size={12} className="hrt"/>{" "}
+      {t("Designed & built by","تصميم وتطوير")} <b>Ibrahim Ghaiyth</b> · {t("© 2026 Architect — All rights reserved.","© 2026 معمار — جميع الحقوق محفوظة.")}
+    </footer>
   );
 }
 
@@ -729,7 +795,7 @@ function CostField({value,setValue,lang}){
 }
 
 /* ---------------- AI Panel ---------------- */
-function AIPanel({t,msgs,busy,input,setInput,onClose,onSend,onInsert,quick}){
+function AIPanel({t,msgs,busy,input,setInput,onClose,onSend,onInsert,onCopy,onRegenerate,quick}){
   const ref=useRef(null);
   useEffect(()=>{if(ref.current)ref.current.scrollTop=ref.current.scrollHeight;},[msgs,busy]);
   return (
@@ -738,14 +804,18 @@ function AIPanel({t,msgs,busy,input,setInput,onClose,onSend,onInsert,quick}){
         <div className="grab"/>
         <div className="shead">
           <span className="mk"><Sparkles size={18}/></span>
-          <div style={{flex:1}}><b>{t("AI Assistant","مساعد الذكاء الاصطناعي")}</b><small>{t("Powered by Claude · real answers","مدعوم بـ Claude · إجابات حقيقية")}</small></div>
+          <div style={{flex:1}}><b>{t("AI Assistant","مساعد الذكاء الاصطناعي")}</b><small>{t("AI-powered · real answers","مدعوم بالذكاء الاصطناعي · إجابات حقيقية")}</small></div>
           <button className="htbtn htico" onClick={onClose}><X size={16}/></button>
         </div>
         <div className="sbody" ref={ref}>
           {msgs.length===0 && (<div className="qstart"><p>{t("Ask me anything about your plan, or start here:","اسألني أي شيء عن خطتك، أو ابدأ من هنا:")}</p>
             {quick.map((q,i)=><button key={i} className="q" onClick={()=>onSend(q.msg)}>{q.label}</button>)}</div>)}
           {msgs.map((m,i)=>(<div key={i} className={`msg ${m.role}`}>{m.content}
-            {m.target&&<button className="ins" onClick={()=>onInsert(m.target,m.content)}><Plus size={12}/>{t("Insert into plan","إدراج في الخطة")}</button>}</div>))}
+            {m.target&&<button className="ins" onClick={()=>onInsert(m.target,m.content)}><Plus size={12}/>{t("Insert into plan","إدراج في الخطة")}</button>}
+            {m.role==="a"&&!busy&&(<div className="mactions">
+              <button className="iconbtn" onClick={()=>onCopy(m.content)}><Copy size={12}/>{t("Copy","نسخ")}</button>
+              {i===msgs.length-1 && <button className="iconbtn" onClick={onRegenerate}><RotateCcw size={12}/>{t("Regenerate","إعادة الصياغة")}</button>}
+            </div>)}</div>))}
           {busy&&<div className="msg a"><Loader2 size={16} className="spin"/></div>}
         </div>
         <div className="sfoot">
@@ -867,7 +937,7 @@ function Gauge2({value,label}){
     <circle cx="75" cy="75" r={r} fill="none" stroke="var(--paper2)" strokeWidth="12"/>
     <circle cx="75" cy="75" r={r} fill="none" stroke={scoreColor(value)} strokeWidth="12" strokeLinecap="round"
       strokeDasharray={c} strokeDashoffset={off} transform="rotate(-90 75 75)" style={{transition:"stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1)"}}/></svg>
-    <div className="l"><b style={{color:scoreColor(value)}}>{value}<span style={{fontSize:16}}>%</span></b><span>{label}</span></div></div>);
+    <div className="l"><b style={{color:scoreColor(value)}}>{value}<span className="pct" style={{fontSize:16}}>%</span></b><span className="lbl">{label}</span></div></div>);
 }
 
 /* ---------------- scoring ---------------- */
@@ -908,7 +978,8 @@ function buildReportHTML(plan,scores,typeObj,lang){
 .eb{font-family:monospace;letter-spacing:.14em;text-transform:uppercase;color:#0b9b6e;font-size:12px}
 .bd{padding:26px 34px}h3{font-size:17px;border-top:1px solid #dfe7e1;padding-top:18px;margin-top:18px}
 table{width:100%;border-collapse:collapse;font-size:13px}td,th{border:1px solid #dfe7e1;padding:8px;text-align:start}th{background:#f3f7f3;color:#0b9b6e;font-family:monospace}
-.sc{font-size:38px;color:${col};font-weight:700}</style></head>
+.sc{font-size:38px;color:${col};font-weight:700}
+.ft{padding:14px 34px;border-top:1px solid #dfe7e1;text-align:center;font-size:11px;color:#90a59c}</style></head>
 <body><div class="box"><div class="cv"><div class="eb">${esc(typeObj?L(lang,typeObj.en,typeObj.ar):"")}</div>
 <h1>${esc(b.name||"Untitled")}</h1><p>${esc(b.desc||"")}</p><div class="sc">${scores.overall}% <span style="font-size:14px;color:#5a7068">${L(lang,"readiness","جاهزية")}</span></div></div>
 <div class="bd">
@@ -921,5 +992,5 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{border:1px solid 
 <h3>MVP</h3>${ul(plan.mvp?.mvp)}
 <h3>${L(lang,"Timeline","الجدول الزمني")}</h3><table><tr><th>${L(lang,"Phase","المرحلة")}</th><th>${L(lang,"Weeks","الأسابيع")}</th></tr>${phases.map(p=>`<tr><td>${L(lang,p.en,p.ar)}</td><td>${esc(p.w)}</td></tr>`).join("")}</table>
 <h3>${L(lang,"Cost","التكلفة")}</h3><p>${cost?L(lang,cost.en,cost.ar)+" — "+cost.range:"—"}</p>
-</div></div></body></html>`;
+</div><div class="ft">${L(lang,"Designed &amp; built by","تصميم وتطوير")} <b>Ibrahim Ghaiyth</b> · ${L(lang,"© 2026 Architect — All rights reserved.","© 2026 معمار — جميع الحقوق محفوظة.")}</div></div></body></html>`;
 }
