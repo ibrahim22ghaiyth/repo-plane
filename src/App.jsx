@@ -295,7 +295,9 @@ textarea.in{ resize:vertical; min-height:96px; line-height:1.6; }
 @media(min-width:520px){ .gw{ flex-direction:row; gap:24px; } }
 .gauge{ position:relative; width:150px; height:150px; flex:none; }
 .gauge .l{ position:absolute; inset:0; display:grid; place-items:center; text-align:center; }
-.gauge .l b{ font-family:var(--fEn); font-size:36px; } .gauge .l span{ display:block; font-family:var(--fMono); font-size:10px; color:var(--muted); letter-spacing:.1em; }
+.gauge .l b{ font-family:var(--fEn); font-size:36px; }
+.gauge .l span{ display:block; margin-top:2px; font-family:var(--fMono); font-size:10px; color:var(--muted); letter-spacing:.1em; white-space:nowrap; text-transform:uppercase; }
+.pb[dir="rtl"] .gauge .l span{ font-family:var(--fAr); font-size:11px; letter-spacing:0; text-transform:none; }
 .bars{ flex:1; width:100%; min-width:0; }
 .bar{ margin-bottom:12px; } .bar .t{ display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px; }
 .bar .tr{ height:9px; border-radius:99px; background:var(--paper2); border:1px solid var(--line); overflow:hidden; }
